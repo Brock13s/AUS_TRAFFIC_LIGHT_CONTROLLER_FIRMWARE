@@ -1,3 +1,5 @@
+//Australia traffic light sequencer firmware :)
+//Controlled by a IR Remote that I have from my led strips but they broke so im using the remote
 #include <IRremote.h>
 
 #define red_light 3
@@ -5,6 +7,7 @@
 #define green_light 5
 #define ir_pin 2
 
+//IR BUTTON codes in decimal not HEX
 #define IR_OFF_BTN 4244827904
 #define IR_ON_BTN 4228116224
 #define IR_FLASH_BTN 4094422784
@@ -12,6 +15,9 @@
 #define IR_RED_BTN 4211404544
 #define IR_GREEN_BTN 4194692864
 #define IR_YELLOW_BTN 3944017664
+//END
+
+#define RED_AND_GREEN_DURATION 10 //seconds, this is used to set the green and red led on time in seconds so if you want 5 seconds it needs to be 5 not 5000
 
 #define ENABLE true
 #define DISABLE false
@@ -23,9 +29,8 @@ bool flag1 = true;
 bool colorbuttonstates[3] = {true, true, true};
 
 unsigned long previousTime = 0;
-const unsigned long redDuration = 10000;
-const unsigned long greenDuration = 10000;
-const unsigned long amberDuration = 5000;
+const int Durations[2] = {RED_AND_GREEN_DURATION*1000, 5000};
+
 
 enum TrafficState {
   RED,
@@ -55,12 +60,6 @@ void setup() {
   digitalWrite(red_light, RelayInvert ? !HIGH : HIGH); // Turn on the red LED
 }
 
-void turnoff(){
-      digitalWrite(red_light, RelayInvert ? !LOW : LOW);
-    digitalWrite(amber_light, RelayInvert ? !LOW : LOW);
-    digitalWrite(green_light, RelayInvert ? !LOW : LOW);
-}
-
 void loop() {
   if (IrReceiver.decode()) {
     command1 = IrReceiver.decodedIRData.decodedRawData;
@@ -73,6 +72,7 @@ void loop() {
         break;
       case IR_FLASH_BTN:
         currentMode = TL_ANIMATION;
+        flag1 = true;
         break;
       case IR_STROBE_BTN:
         currentMode = TL_TOGGLE;
@@ -115,7 +115,7 @@ void loop() {
 
       switch (currentState) {
         case RED:
-          if (millis() - previousTime >= redDuration) {
+          if (millis() - previousTime >= Durations[0]) {
             currentState = GREEN;
             previousTime = millis();
             digitalWrite(red_light, RelayInvert ? !LOW : LOW);
@@ -124,7 +124,7 @@ void loop() {
           break;
 
         case GREEN:
-          if (millis() - previousTime >= greenDuration) {
+          if (millis() - previousTime >= Durations[0]) {
             currentState = AMBER;
             previousTime = millis();
             digitalWrite(green_light, RelayInvert ? !LOW : LOW);
@@ -133,7 +133,7 @@ void loop() {
           break;
 
         case AMBER:
-          if (millis() - previousTime >= amberDuration) {
+          if (millis() - previousTime >= Durations[1]) {
             currentState = RED;
             previousTime = millis();
             digitalWrite(amber_light, RelayInvert ? !LOW : LOW);
@@ -141,17 +141,9 @@ void loop() {
           }
           break;
       }
-      if(command1 == IR_STROBE_BTN){
-        turnoff();
-      }
     }
 
     else if(currentMode == TL_TOGGLE){
-            if(command1 == IR_FLASH_BTN){
-        Serial.println("DEBUG");
-        turnoff();
-        
-      }
        
       digitalWrite(amber_light, RelayInvert ^ colorbuttonstates[2]);
       digitalWrite(green_light, RelayInvert ^ colorbuttonstates[1]);
@@ -161,7 +153,9 @@ void loop() {
 
 
   } else {
-    turnoff();
+      digitalWrite(red_light, RelayInvert ? !LOW : LOW);
+    digitalWrite(amber_light, RelayInvert ? !LOW : LOW);
+    digitalWrite(green_light, RelayInvert ? !LOW : LOW);
     flag1 = true;
   }
 
